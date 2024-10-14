@@ -10,31 +10,86 @@
 
 using namespace std;
 
+
+void console_parse(string& schem_name, HashTable<List<string>>& tables, List<string>& tables_names, int& limit);
+void check_csv(string& schem_name, HashTable<List<string>>& tables, List<string>& tables_names);
+
 void printRows(List<List<string>>& to_print);
+void copyList(List<string>& from, List<string>& to);
+string take_string(string& line, int& i);
+string unwrap_string(string str);
+void get_names(string& line, int& i, List<string>& selected_tables, List<string>& selected_columns);
+bool check_synt(List<string>& selected_tables, List<string>& from_tables);
 
-void setPrimaryKeyFile(const filesystem::path& directory, const std::string& tableName, int key) {
-    
-    filesystem::path filePath = directory / (tableName + "_pk");
+void deleting(string& line, int& i, HashTable<List<string>>& tables, string& schem_name);
+void insert(string& line, int& i, HashTable<List<string>>& tables, string& schem_name, int& limit);
+void select(string& line, int& i, string& schem_name, HashTable<List<string>>& tables);
+void where_select(string& line, int& i, string& logi, List<string>& posl, List<List<string>>& old_formed, List<bool>& cmp);
+int readPrimaryKeyValue(const filesystem::path& directory, const std::string& tableName);
+void setPrimaryKeyFile(const filesystem::path& directory, const std::string& tableName, int key);
 
-    std::ofstream file(filePath, std::ios::out | std::ios::trunc);
+int main(){
+    HashTable<List<string>> tables;
+    List<string> tables_names;
+    string schem_name;
+    int limit;
 
-    file << key;
+    getJSON(tables, tables_names, schem_name, limit);
+    check_csv(schem_name, tables, tables_names);
 
-    file.close();
+    console_parse(schem_name, tables, tables_names, limit);
+
+    return 1;
 }
 
-int readPrimaryKeyValue(const filesystem::path& directory, const std::string& tableName) {
+void console_parse(string& schem_name, HashTable<List<string>>& tables, List<string>& tables_names, int& limit){
+    filesystem::path dirPath = ".";
+    string line;
+    bool ended = true;
 
-    filesystem::path filePath = directory / (tableName + "_pk");
+    while (ended){
+        try{
+    
+            getline(cin, line);
 
-    std::ifstream file(filePath);
+            string command;
+            int i = 0;
 
-    int value;
-    file >> value;
+            while(i < line.length()){
 
-    file.close();
+                while(line[i] != ' ' && i < line.length()){
+                    command.push_back(line[i]);
+                    i++;
+                }
+                i++;
 
-    return value;
+                if (command == "SELECT"){
+                    select(line, i, schem_name, tables);
+                }
+                else if(command == "INSERT"){
+                    string cm = take_string(line, i);
+                    if (cm != "INTO") throw runtime_error("Wrong syntax");
+                    
+                    insert(line, i, tables, schem_name, limit);
+                }
+                else if(command == "DELETE"){
+                    string cm = take_string(line, i);
+                    if (cm != "FROM") throw runtime_error("Wrong syntax");
+                    deleting(line, i, tables, schem_name);
+                }
+                else if (command == "END"){
+                    ended = false;
+                    break;
+                }
+                else{
+                    throw runtime_error("Unknown command");
+                }
+            }
+        }catch(runtime_error err){
+            cerr << err.what() << endl;
+        }
+    }
+
 }
 
 void check_csv(string& schem_name, HashTable<List<string>>& tables, List<string>& tables_names){
@@ -57,41 +112,6 @@ void check_csv(string& schem_name, HashTable<List<string>>& tables, List<string>
     }
 }
 
-void get_names(string& line, int& i, List<string>& selected_tables, List<string>& selected_columns){
-    bool more = true;
-    int count = 0;
-
-    while(more ){
-        string name;
-        string column;
-        bool geted_name = false;
-        if (i > line.length()) throw runtime_error("Wrong syntax");
-
-        while(line[i] != ' ' && line[i] != ',' && i < line.length()){
-            if (line[i] == '.'){
-                geted_name = true;
-                i++;
-            }
-            if (!geted_name){
-                name.push_back(line[i]);
-            }
-            else{
-                column.push_back(line[i]);
-            }
-            i++;
-        }
-
-        selected_tables.push(name);
-        selected_columns.push(column);
-
-        name = "";
-        column = "";
-        geted_name = false;
-        if (line[i] == ' ' || i >= line.length()) more = false;
-        else i++;
-        i++;
-    }
-}
 
 void get_tables(string& line, int& i, List<string>& selected_tables){
     bool more = true;
@@ -115,23 +135,6 @@ void get_tables(string& line, int& i, List<string>& selected_tables){
         else i++;
         i++;
     }
-}
-
-void copyList(List<string>& from, List<string>& to){
-    for(int i = 0; i < from.length; i++){
-        to.push(from[i]);
-    }
-}
-
-
-string take_string(string& line, int& i){
-    string res;
-    while (line[i] != ' ' && i < line.length()){
-        res.push_back(line[i]);
-        i++;
-    }
-    i++;
-    return res;
 }
 
 void double_clear(List<List<string>>& formed){
@@ -166,17 +169,6 @@ void cross_joint(List<List<string>>& itog, List<List<string>>& pred){
     itog = res;
 }
 
-bool check_synt(List<string>& selected_tables, List<string>& from_tables){
-    for(int i = 0; i < selected_tables.length; i++){
-        if (from_tables.find(selected_tables[i]) == -1) return false;
-    }
-    for(int i = 0; i < from_tables.length; i++){
-        if (selected_tables.find(from_tables[i]) == -1) return false;
-    }
-
-    return true;
-}
-
 void printRows(List<List<string>>& to_print){
     for(int i = 0; i < to_print.length; i++){
         for(int j = 0; j < to_print[i].length;j++){
@@ -194,25 +186,6 @@ void printFilteredRows(List<List<string>>& to_print, List<bool>& cmp){
         }
         cout << endl;
     }
-}
-
-string unwrap_string(string str){
-    string res;
-
-    int index = 0;
-    bool geting = false;
-
-    while(index < str.length()){
-        if (str[index] == '\''){
-            if (geting) return res;
-            else geting = true;
-        }
-        else if(geting) res.push_back(str[index]);
-
-        index++;
-    }
-
-    throw runtime_error("Invalid argument");
 }
 
 void form(string& schem_name, List<string>& from_tables, HashTable<List<string>>& rasp, List<string>& posl, List<List<string>>& old_formed, HashTable<List<string>>& tables){
@@ -495,64 +468,109 @@ void deleting(string& line, int& i, HashTable<List<string>>& tables, string& sch
     headers.clear();
 }
 
-void console_parse(string& schem_name, HashTable<List<string>>& tables, List<string>& tables_names, int& limit){
-    filesystem::path dirPath = ".";
-    string line;
-    bool ended = true;
-
-    while (ended){
-        try{
-    
-            getline(cin, line);
-
-            string command;
-            int i = 0;
-
-            while(i < line.length()){
-
-                while(line[i] != ' ' && i < line.length()){
-                    command.push_back(line[i]);
-                    i++;
-                }
-                i++;
-
-                if (command == "SELECT"){
-                    select(line, i, schem_name, tables);
-                }
-                else if(command == "INSERT"){
-                    string cm = take_string(line, i);
-                    if (cm != "INTO") throw runtime_error("Wrong syntax");
-                    
-                    insert(line, i, tables, schem_name, limit);
-                }
-                else if(command == "DELETE"){
-                    string cm = take_string(line, i);
-                    if (cm != "FROM") throw runtime_error("Wrong syntax");
-                    deleting(line, i, tables, schem_name);
-                }
-                else if (command == "END"){
-                    ended = false;
-                    break;
-                }
-                else{
-                    throw runtime_error("Unknown command");
-                }
-            }
-        }catch(runtime_error err){
-            cerr << err.what() << endl;
-        }
+void copyList(List<string>& from, List<string>& to){
+    for(int i = 0; i < from.length; i++){
+        to.push(from[i]);
     }
-
 }
 
-int main(){
-    HashTable<List<string>> tables;
-    List<string> tables_names;
-    string schem_name;
-    int limit;
+string take_string(string& line, int& i){
+    string res;
+    while (line[i] != ' ' && i < line.length()){
+        res.push_back(line[i]);
+        i++;
+    }
+    i++;
+    return res;
+}
 
-    getJSON(tables, tables_names, schem_name, limit);
-    check_csv(schem_name, tables, tables_names);
+string unwrap_string(string str){
+    string res;
 
-    console_parse(schem_name, tables, tables_names, limit);
+    int index = 0;
+    bool geting = false;
+
+    while(index < str.length()){
+        if (str[index] == '\''){
+            if (geting) return res;
+            else geting = true;
+        }
+        else if(geting) res.push_back(str[index]);
+
+        index++;
+    }
+
+    throw runtime_error("Invalid argument");
+}
+
+void get_names(string& line, int& i, List<string>& selected_tables, List<string>& selected_columns){
+    bool more = true;
+    int count = 0;
+
+    while(more ){
+        string name;
+        string column;
+        bool geted_name = false;
+        if (i > line.length()) throw runtime_error("Wrong syntax");
+
+        while(line[i] != ' ' && line[i] != ',' && i < line.length()){
+            if (line[i] == '.'){
+                geted_name = true;
+                i++;
+            }
+            if (!geted_name){
+                name.push_back(line[i]);
+            }
+            else{
+                column.push_back(line[i]);
+            }
+            i++;
+        }
+
+        selected_tables.push(name);
+        selected_columns.push(column);
+
+        name = "";
+        column = "";
+        geted_name = false;
+        if (line[i] == ' ' || i >= line.length()) more = false;
+        else i++;
+        i++;
+    }
+}
+
+bool check_synt(List<string>& selected_tables, List<string>& from_tables){
+    for(int i = 0; i < selected_tables.length; i++){
+        if (from_tables.find(selected_tables[i]) == -1) return false;
+    }
+    for(int i = 0; i < from_tables.length; i++){
+        if (selected_tables.find(from_tables[i]) == -1) return false;
+    }
+
+    return true;
+}
+
+void setPrimaryKeyFile(const filesystem::path& directory, const std::string& tableName, int key) {
+    
+    filesystem::path filePath = directory / (tableName + "_pk");
+
+    std::ofstream file(filePath, std::ios::out | std::ios::trunc);
+
+    file << key;
+
+    file.close();
+}
+
+int readPrimaryKeyValue(const filesystem::path& directory, const std::string& tableName) {
+
+    filesystem::path filePath = directory / (tableName + "_pk");
+
+    std::ifstream file(filePath);
+
+    int value;
+    file >> value;
+
+    file.close();
+
+    return value;
 }

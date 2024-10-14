@@ -12,7 +12,7 @@ char* LoadJsonFile(const char* fname, int64_t& size) {
   FILE *fp = fopen(fname, "rb");
 
   if (!fp) {
-      printf("������: �� ������� ������� ����.\n");
+      printf("Unable to open the file.\n");
       exit(1);
   }
 
