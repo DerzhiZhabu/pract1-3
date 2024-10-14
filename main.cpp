@@ -409,6 +409,7 @@ void insert(string& line, int& i, HashTable<List<string>>& tables, string& schem
 }
 
 void deleting(string& line, int& i, HashTable<List<string>>& tables, string& schem_name){
+
     filesystem::path dirPath = ".";
 
     List<List<string>> table;
@@ -457,14 +458,15 @@ void deleting(string& line, int& i, HashTable<List<string>>& tables, string& sch
         else counter++;
     }
 
+
     writeToCsv(dirPath/schem_name/table_name/"1.csv", result, table_name, schem_name);
     int pk = readPrimaryKeyValue(dirPath/schem_name/table_name, table_name);
     pk -= counter;
     setPrimaryKeyFile(dirPath/schem_name/table_name, table_name, pk);
     
+    
 
     double_clear(table);
-    double_clear(result);
     headers.clear();
 }
 
