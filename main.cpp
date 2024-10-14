@@ -57,10 +57,6 @@ void check_csv(string& schem_name, HashTable<List<string>>& tables, List<string>
     }
 }
 
-void select(HashTable<List<string>>& table, List<string> columns){
-    int a = 8;
-}
-
 void get_names(string& line, int& i, List<string>& selected_tables, List<string>& selected_columns){
     bool more = true;
     int count = 0;
@@ -331,6 +327,11 @@ void select(string& line, int& i, string& schem_name, HashTable<List<string>>& t
         List<string> forRasp;
         for(int j = 0; j < selected_tables.length; j++){
             if (selected_tables[j] == from_tables[o]){
+                if (selected_columns[j] == "*"){
+                    List<string> dop = tables.Get(selected_tables[j]);
+                    copyList(dop, forRasp);
+                    continue;
+                }
                 if (forRasp.find(selected_columns[j]) != -1) throw runtime_error("Wrong syntax");
                 forRasp.push(selected_columns[j]);
             }
